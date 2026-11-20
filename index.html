@@ -32,7 +32,7 @@ pre{margin:0;max-height:260px;overflow:auto;font-size:13px;background:#f2f4f7;pa
 <div class="card"><h2>Full log (latest)</h2><pre id="log"></pre></div>
 </div>
 <script>
-const fmt=(x,d=2)=>x==null?'–':Number(x).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmt=(x,d=2)=>x==null?(PUBLIC?'hidden':'–'):Number(x).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 const cls=x=>x>0?'pos':x<0?'neg':'';
 const berlin=s=>new Date(s).toLocaleString('en-GB',{timeZone:'Europe/Berlin',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
 function pill(t,c){return `<span class="pill ${c}">${t}</span>`}
@@ -76,8 +76,8 @@ async function load(){
  document.getElementById('pills').innerHTML=p;
  const a=d.account||{},s=d.signal;
  document.getElementById('cards').innerHTML=
- `<div class="card"><h2>Balance</h2><div class="big">${fmt(a.balance)}</div><div class="sub">${a.currency||''} · free: ${fmt(a.available)}</div></div>
-  <div class="card"><h2>Open profit/loss</h2><div class="big ${cls(a.pnl)}">${fmt(a.pnl)}</div><div class="sub">all open trades</div></div>
+ `<div class="card"><h2>Balance</h2><div class="big">${fmt(a.balance)}</div><div class="sub">${PUBLIC?'hidden on the public page':(a.currency||'')+' · free: '+fmt(a.available)}</div></div>
+  <div class="card"><h2>Open profit/loss</h2><div class="big ${cls(a.pnl)}">${fmt(a.pnl)}</div><div class="sub">${PUBLIC?'hidden on the public page':'all open trades'}</div></div>
   <div class="card"><h2>US30 price</h2><div class="big">${fmt(d.bid)}</div><div class="sub">buy ${fmt(d.offer)}</div></div>
   <div class="card"><h2>Signal</h2><div class="big">${s?(s.state==='above'?'Uptrend':'Downtrend'):'–'}</div><div class="sub">${s?`20-day ${fmt(s.fast)} is ${s.state} 50-day ${fmt(s.slow)}`:''}</div></div>
   <div class="card"><h2>Next decision</h2><div class="big" style="font-size:20px">${d.next_bar?berlin(d.next_bar):'–'}</div><div class="sub">Berlin time, when today's daily bar closes</div></div>`;
