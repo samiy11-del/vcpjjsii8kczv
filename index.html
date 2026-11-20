@@ -74,12 +74,16 @@ async function load(){
  if(d.market_status)p+=' '+pill('Market '+d.market_status.toLowerCase(),d.market_status==='TRADEABLE'?'ok':'warn');
  p+=' '+pill('DEMO account','warn');
  document.getElementById('pills').innerHTML=p;
- const a=d.account||{},s=d.signal;
+ const a=d.account||{},s=d.signal,t=d.trends||{};
+ const TW={down:'Downtrend',up:'Uptrend',sideways:'Sideways'};
+ let dirTxt='–',dirCls='';
+ if(t.h4&&t.h1){if(t.h4==='down'&&t.h1==='down'){dirTxt='Down';dirCls='neg'}else if(t.h4==='up'&&t.h1==='up'){dirTxt='Up';dirCls='pos'}else{dirTxt='Mixed'}}
  document.getElementById('cards').innerHTML=
  `<div class="card"><h2>Balance</h2><div class="big">${fmt(a.balance)}</div><div class="sub">${PUBLIC?'hidden on the public page':(a.currency||'')+' · free: '+fmt(a.available)}</div></div>
   <div class="card"><h2>Open profit/loss</h2><div class="big ${cls(a.pnl)}">${fmt(a.pnl)}</div><div class="sub">${PUBLIC?'hidden on the public page':'all open trades'}</div></div>
   <div class="card"><h2>US30 price</h2><div class="big">${fmt(d.bid)}</div><div class="sub">buy ${fmt(d.offer)}</div></div>
-  <div class="card"><h2>Signal</h2><div class="big">${s?(s.state==='above'?'Uptrend':'Downtrend'):'–'}</div><div class="sub">${s?`20-day ${fmt(s.fast)} is ${s.state} 50-day ${fmt(s.slow)}`:''}</div></div>
+  <div class="card"><h2>Trend direction</h2><div class="big ${dirCls}">${dirTxt}</div><div class="sub">4-hour: ${TW[t.h4]||'–'} · 1-hour: ${TW[t.h1]||'–'}</div></div>
+  <div class="card"><h2>Daily averages (bot rule)</h2><div class="big" style="font-size:20px">${s?(s.state==='above'?'20-day above 50-day':'20-day below 50-day'):'–'}</div><div class="sub">Slow signal. The bot buys only on a fresh upward cross.</div></div>
   <div class="card"><h2>Next decision</h2><div class="big" style="font-size:20px">${d.next_bar?berlin(d.next_bar):'–'}</div><div class="sub">Berlin time, when today's daily bar closes</div></div>`;
  const ps=d.positions||[];
  document.getElementById('pos').innerHTML=ps.length?
