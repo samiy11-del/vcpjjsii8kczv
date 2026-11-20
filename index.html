@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>US30 Demo Bot</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1a1d23;--mute:#667085;--line:#e4e7ec;--green:#067647;--red:#b42318;--blue:#175cd3;--amber:#b54708}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,Segoe UI,Arial,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:20px}
+h1{font-size:22px;margin:0}h2{font-size:15px;margin:0 0 10px;color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:14px;font-weight:600;border:1px solid var(--line);background:#fff}
+.ok{color:var(--green);border-color:#abefc6;background:#ecfdf3}.bad{color:var(--red);border-color:#fecdca;background:#fef3f2}.warn{color:var(--amber);border-color:#fedf89;background:#fffaeb}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.big{font-size:28px;font-weight:700}.sub{color:var(--mute);font-size:14px}
+.pos{color:var(--green)}.neg{color:var(--red)}
+table{width:100%;border-collapse:collapse;font-size:15px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}th{color:var(--mute);font-weight:600;font-size:13px}
+canvas{width:100%;height:300px;display:block}
+pre{margin:0;max-height:260px;overflow:auto;font-size:13px;background:#f2f4f7;padding:10px;border-radius:8px;white-space:pre-wrap}
+.err{background:#fef3f2;border:1px solid #fecdca;color:var(--red);padding:10px 14px;border-radius:10px;margin-bottom:14px}
+.empty{color:var(--mute);padding:8px 0}
+</style></head><body><div class="wrap">
+<div class="top"><div><h1>US30 Demo Bot</h1><div class="sub" id="upd">loading…</div></div>
+<div id="pills"></div></div>
+<div id="err"></div>
+<div class="grid" id="cards"></div>
+<div class="card" style="margin-bottom:14px"><h2>Open trades</h2><div id="pos"></div></div>
+<div class="card" style="margin-bottom:14px"><h2>US30 daily price with the two averages</h2><canvas id="cv"></canvas>
+<div class="sub" id="legend"></div></div>
+<div class="card" style="margin-bottom:14px"><h2>Bot decisions and trades</h2><div id="dec"></div></div>
+<div class="card"><h2>Full log (latest)</h2><pre id="log"></pre></div>
+</div>
+<script>
+const fmt=(x,d=2)=>x==null?'–':Number(x).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const cls=x=>x>0?'pos':x<0?'neg':'';
+const berlin=s=>new Date(s).toLocaleString('en-GB',{timeZone:'Europe/Berlin',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+function pill(t,c){return `<span class="pill ${c}">${t}</span>`}
+function draw(ch){
+ const cv=document.getElementById('cv'),r=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
+ cv.width=w*r;cv.height=h*r;const g=cv.getContext('2d');g.scale(r,r);g.clearRect(0,0,w,h);
+ if(!ch||!ch.length)return;
+ const vals=ch.flatMap(p=>[p.close,p.sma20,p.sma50]).filter(v=>v!=null);
+ let lo=Math.min(...vals),hi=Math.max(...vals);const pad=(hi-lo)*.06||1;lo-=pad;hi+=pad;
+ const L=58,R=10,T=10,B=22,X=i=>L+(w-L-R)*i/(ch.length-1),Y=v=>T+(h-T-B)*(1-(v-lo)/(hi-lo));
+ g.strokeStyle='#e4e7ec';g.fillStyle='#667085';g.font='12px system-ui';g.lineWidth=1;
+ for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4,y=Y(v);g.beginPath();g.moveTo(L,y);g.lineTo(w-R,y);g.stroke();g.fillText(fmt(v,0),4,y+4)}
+ const idx=[0,Math.floor(ch.length/2),ch.length-1];
+ idx.forEach(i=>{const d=new Date(ch[i].t);g.fillText(d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'}),Math.min(X(i),w-48),h-6)});
+ const line=(key,col,wd)=>{g.beginPath();let s=false;g.strokeStyle=col;g.lineWidth=wd;ch.forEach((p,i)=>{if(p[key]==null)return;s?g.lineTo(X(i),Y(p[key])):(g.moveTo(X(i),Y(p[key])),s=true)});g.stroke()};
+ line('close','#98a2b3',1.5);line('sma50','#b54708',2.2);line('sma20','#175cd3',2.2);
+ const lp=ch[ch.length-1];g.fillStyle='#1a1d23';g.beginPath();g.arc(X(ch.length-1),Y(lp.close),4,0,7);g.fill();
+}
+function parseLog(lines){
+ const rows=[];
+ for(const l of lines){
+  const t=l.slice(0,19);
+  if(l.includes('NEW BAR')){const m=l.match(/DECISION=(\w+)/);rows.push([t,'Decision: '+(m?m[1]:'?'),l.replace(/^.*?INFO /,'')])}
+  else if(/ (BUY|SELL) /.test(l)&&l.includes('result=')){rows.push([t,l.includes(' SELL ')?'SOLD':'BOUGHT',l.replace(/^.*?(INFO|WARNING) /,'')])}
+  else if(l.includes('BASELINE')){rows.push([t,'Started',l.replace(/^.*?INFO /,'')])}
+  else if(l.includes('ERROR')||l.includes('Traceback')||l.includes('failed')){rows.push([t,'Problem',l.replace(/^.*?(ERROR|WARNING) /,'')])}
+ }
+ return rows.slice(-15).reverse();
+}
+const STATUS_URL="https://raw.githubusercontent.com/samiy11-del/vcpjjsii8kczv/main/status.json",PUBLIC=STATUS_URL!=='/api/status';
+async function load(){
+ let d;try{d=await (await fetch(PUBLIC?STATUS_URL+'?t='+Date.now():STATUS_URL,{cache:'no-store'})).json()}catch(e){document.getElementById('err').innerHTML='<div class="err">Dashboard server not reachable.</div>';return}
+ document.getElementById('err').innerHTML=d.error?`<div class="err">Could not refresh from Capital.com: ${d.error.replace(/</g,'&lt;')}<br>Showing last known data.</div>`:'';
+ if(d.updated)document.getElementById('upd').textContent='Updated '+berlin(d.updated)+' (Berlin time) – '+(PUBLIC?'new data every 5-10 min':'refreshes every 30 s');
+ let hb=d.heartbeat_min;
+ if(PUBLIC&&d.published){hb=Math.max(hb==null?0:hb,(Date.now()-new Date(d.published))/60000)}
+ let p='';
+ p+=hb==null?pill('Bot: unknown','warn'):hb<12?pill('Bot running','ok'):pill(PUBLIC?'Laptop offline? Last data '+Math.round(hb)+' min ago':'Bot NOT running ('+Math.round(hb)+' min silent)','bad');
+ if(d.market_status)p+=' '+pill('Market '+d.market_status.toLowerCase(),d.market_status==='TRADEABLE'?'ok':'warn');
+ p+=' '+pill('DEMO account','warn');
+ document.getElementById('pills').innerHTML=p;
+ const a=d.account||{},s=d.signal;
+ document.getElementById('cards').innerHTML=
+ `<div class="card"><h2>Balance</h2><div class="big">${fmt(a.balance)}</div><div class="sub">${a.currency||''} · free: ${fmt(a.available)}</div></div>
+  <div class="card"><h2>Open profit/loss</h2><div class="big ${cls(a.pnl)}">${fmt(a.pnl)}</div><div class="sub">all open trades</div></div>
+  <div class="card"><h2>US30 price</h2><div class="big">${fmt(d.bid)}</div><div class="sub">buy ${fmt(d.offer)}</div></div>
+  <div class="card"><h2>Signal</h2><div class="big">${s?(s.state==='above'?'Uptrend':'Downtrend'):'–'}</div><div class="sub">${s?`20-day ${fmt(s.fast)} is ${s.state} 50-day ${fmt(s.slow)}`:''}</div></div>
+  <div class="card"><h2>Next decision</h2><div class="big" style="font-size:20px">${d.next_bar?berlin(d.next_bar):'–'}</div><div class="sub">Berlin time, when today's daily bar closes</div></div>`;
+ const ps=d.positions||[];
+ document.getElementById('pos').innerHTML=ps.length?
+ `<table><tr><th>Direction</th><th>Size</th><th>Entry</th><th>Profit/loss</th><th>Opened (UTC)</th></tr>`+
+ ps.map(x=>`<tr><td>${x.direction}</td><td>${fmt(x.size,2)}</td><td>${fmt(x.level)}</td><td class="${cls(x.pnl)}">${fmt(x.pnl)}</td><td>${(x.opened||'').replace('T',' ').slice(0,16)}</td></tr>`).join('')+`</table>`
+ :'<div class="empty">No open trades. The bot buys only when the 20-day average crosses above the 50-day.</div>';
+ draw(d.chart);
+ document.getElementById('legend').innerHTML='<span style="color:#175cd3">■</span> 20-day average &nbsp; <span style="color:#b54708">■</span> 50-day average &nbsp; <span style="color:#98a2b3">■</span> daily close (last point = today, still forming)';
+ const rows=parseLog(d.log||[]);
+ document.getElementById('dec').innerHTML=rows.length?`<table><tr><th>Time</th><th>What</th><th>Details</th></tr>`+rows.map(r=>`<tr><td style="white-space:nowrap">${r[0]}</td><td><b>${r[1]}</b></td><td class="sub">${r[2].replace(/</g,'&lt;')}</td></tr>`).join('')+`</table>`:'<div class="empty">Nothing yet. A decision is logged once per finished daily bar.</div>';
+ const pre=document.getElementById('log');pre.textContent=(d.log||[]).slice(-60).join('\n');
+}
+load();setInterval(load,30000);addEventListener('resize',load);
+</script></body></html>
