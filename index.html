@@ -62,7 +62,7 @@ function parseLog(lines){
  }
  return rows.slice(-15).reverse();
 }
-const STATUS_URL="https://raw.githubusercontent.com/samiy11-del/vcpjjsii8kczv/main/status.json",PUBLIC=STATUS_URL!=='/api/status';
+const STATUS_URL="https://raw.githubusercontent.com/samiy11-del/vcpjjsii8kczv/data/status.json",PUBLIC=STATUS_URL!=='/api/status';
 async function load(){
  let d;try{d=await (await fetch(PUBLIC?STATUS_URL+'?t='+Date.now():STATUS_URL,{cache:'no-store'})).json()}catch(e){document.getElementById('err').innerHTML='<div class="err">Dashboard server not reachable.</div>';return}
  document.getElementById('err').innerHTML=d.error?`<div class="err">Could not refresh from Capital.com: ${d.error.replace(/</g,'&lt;')}<br>Showing last known data.</div>`:'';
