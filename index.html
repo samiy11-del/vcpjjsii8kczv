@@ -83,8 +83,8 @@ async function load(){
   <div class="card"><h2>Next decision</h2><div class="big" style="font-size:20px">${d.next_bar?berlin(d.next_bar):'–'}</div><div class="sub">Berlin time, when today's daily bar closes</div></div>`;
  const ps=d.positions||[];
  document.getElementById('pos').innerHTML=ps.length?
- `<table><tr><th>Direction</th><th>Size</th><th>Entry</th><th>Profit/loss</th><th>Opened (UTC)</th></tr>`+
- ps.map(x=>`<tr><td>${x.direction}</td><td>${fmt(x.size,2)}</td><td>${fmt(x.level)}</td><td class="${cls(x.pnl)}">${fmt(x.pnl)}</td><td>${(x.opened||'').replace('T',' ').slice(0,16)}</td></tr>`).join('')+`</table>`
+ `<table><tr><th>Opened by</th><th>Direction</th><th>Size</th><th>Entry</th><th>Profit/loss</th><th>Opened (UTC)</th></tr>`+
+ ps.map(x=>`<tr><td>${x.bot?'<b>This bot</b>':'Someone else (bot ignores it)'}</td><td>${x.direction}</td><td>${fmt(x.size,2)}</td><td>${fmt(x.level)}</td><td class="${cls(x.pnl)}">${fmt(x.pnl)}</td><td>${(x.opened||'').replace('T',' ').slice(0,16)}</td></tr>`).join('')+`</table>`
  :'<div class="empty">No open trades. The bot buys only when the 20-day average crosses above the 50-day.</div>';
  draw(d.chart);
  document.getElementById('legend').innerHTML='<span style="color:#175cd3">■</span> 20-day average &nbsp; <span style="color:#b54708">■</span> 50-day average &nbsp; <span style="color:#98a2b3">■</span> daily close (last point = today, still forming)';
